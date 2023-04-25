@@ -18,10 +18,10 @@ def poe_send(dat_file, host, port):
     logging.info(msg=f'sent - {dat_file}')
 
 
-async def process_stream_queue(stream_queue, host, port, mode='dev'):
+async def process_queue(change_queue, host, port, mode='dev'):
     while True:
-        if not stream_queue.empty():
-            slug = stream_queue.get()
+        if not change_queue.empty():
+            slug = change_queue.get()
             # logging.info(msg=slug)
             if mode == 'prod':
                 poe_send(slug.src_path, host, port)
@@ -33,7 +33,7 @@ async def process_stream_queue(stream_queue, host, port, mode='dev'):
             await asyncio.sleep(.1)
 
 
-class StreamWatchdog(PatternMatchingEventHandler):
+class DerWatchDog(PatternMatchingEventHandler):
     def __init__(self, queue, patterns):
         PatternMatchingEventHandler.__init__(self, patterns=patterns)
         self.Q = queue

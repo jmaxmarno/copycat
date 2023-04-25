@@ -5,7 +5,7 @@ from watchdog.observers import Observer
 from watchdog.events import LoggingEventHandler
 import queue
 from threading import Thread
-from func import process_stream_queue, StreamWatchdog
+from func import process_queue, DerWatchDog
 
 
 def main():
@@ -16,8 +16,8 @@ def main():
     print(f'watching: {path}')
 
     work_queue = queue.Queue()
-    worker = Thread(target=asyncio.run, args=(process_stream_queue(work_queue, poe_host, poe_port, mode),), daemon=True).start()
-    event_handler = StreamWatchdog(queue=work_queue, patterns=file_patterns)
+    worker = Thread(target=asyncio.run, args=(process_queue(work_queue, poe_host, poe_port, mode),), daemon=True).start()
+    event_handler = DerWatchDog(queue=work_queue, patterns=file_patterns)
 
     observer = Observer()
     observer.schedule(event_handler, path)
