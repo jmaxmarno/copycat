@@ -32,3 +32,16 @@ Prod mode send relays the created files matching the file_patterns to the specif
 python3 copy_cat.py --prod_mode
 ```
 
+### Output Directory
+default="./copycat_output"
+```
+python3 copy_cat.py --output_dir="./copycat_output"
+```
+
+### File Patterns
+default=["*.dat"]
+use wildcard characters
+```
+python3 copy_cat.py --file_patterns "*RAWS*" "*.test"
+```
+
