@@ -17,8 +17,7 @@ def poe_send(dat_file, host, port):
         s.sendall(bytes(io, 'utf-8'))
         s.close()
     except Exception as e:
-        copylogger.error(f'poe_send error:{dat_file} -- \n {e}')
-        copylogger.error(f'poe_send error: {e}')
+        copylogger.exception(f'poe_send error:{dat_file} -- \n {e}')
 
 
 # try to copy a file to the output directory, if it fails, log it
@@ -34,17 +33,21 @@ def try_copy(src_path, output_dir):
 async def process_queue(change_queue, host, port, stats_dict, mode='dev', output_dir=None):
     while True:
         if not change_queue.empty():
-            slug = change_queue.get()
-            copylogger.debug(msg=slug.src_path)
-            stats_dict['total'] += 1
-            # logging.info(msg=slug)
-            if mode == 'prod' and host is not None and port is not None:
-                poe_send(slug.src_path, host, port)
-                stats_dict['sent'] += 1
-                copylogger.info(msg=f'sent: {slug.src_path}')
-            if output_dir is not None:
-                try_copy(slug.src_path, output_dir)
-                stats_dict['copied'] += 1
+            try:
+                slug = change_queue.get()
+                copylogger.debug(msg=slug.src_path)
+                stats_dict['total'] += 1
+                # logging.info(msg=slug)
+                if mode == 'prod' and host is not None and port is not None:
+                    poe_send(slug.src_path, host, port)
+                    stats_dict['sent'] += 1
+                    copylogger.info(msg=f'sent: {slug.src_path}')
+                if output_dir is not None:
+                    try_copy(slug.src_path, output_dir)
+                    stats_dict['copied'] += 1
+            except Exception as e:
+                stats_dict['errors'] += 1
+                copylogger.exception(f'process_queue error: {e}')
         else:
             await asyncio.sleep(.05)
 
