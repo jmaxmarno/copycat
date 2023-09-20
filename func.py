@@ -35,14 +35,16 @@ async def process_queue(change_queue, host, port, stats_dict, mode='dev', output
     while True:
         if not change_queue.empty():
             slug = change_queue.get()
+            copylogger.debug(msg=slug.src_path)
+            stats_dict['total'] += 1
             # logging.info(msg=slug)
-            if mode == 'prod':
+            if mode == 'prod' and host is not None and port is not None:
                 poe_send(slug.src_path, host, port)
+                stats_dict['sent'] += 1
                 copylogger.info(msg=f'sent: {slug.src_path}')
-            else:
-                copylogger.info(msg=slug.src_path)
             if output_dir is not None:
                 try_copy(slug.src_path, output_dir)
+                stats_dict['copied'] += 1
         else:
             await asyncio.sleep(.05)
 

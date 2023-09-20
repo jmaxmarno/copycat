@@ -23,15 +23,16 @@ def main():
     rotating_log_handler = TimedRotatingFileHandler(
         filename=os.path.join("./logs", 'copycat.log')
         , when='D'
-        , interval=1)
+        , interval=1,
+        backupCount=3)
     rotating_log_handler.namer = rotating_namer
     rotating_log_handler.setFormatter(JsonLogFormatter({"level": "levelname",
                                                "message": "message",
                                                "loggerName": "name",
                                                "processName": "processName",
-                                               "processID": "process",
-                                               "threadName": "threadName",
-                                               "threadID": "thread",
+                                               # "processID": "process",
+                                               # "threadName": "threadName",
+                                               # "threadID": "thread",
                                                "timestamp": "asctime"}))
 
     copylogger = logging.getLogger(
@@ -42,8 +43,8 @@ def main():
     basic_handler = logging.StreamHandler(sys.stdout)
     basic_handler.setLevel(10)
     copylogger.addHandler(basic_handler)
-    copylogger.info(f'watching: {path}')
-    stats_dict = {'files_sent': 0, 'files_copied': 0, 'errors': 0}
+    copylogger.info(args._get_kwargs())
+    stats_dict = {'sent': 0, 'copied': 0, 'errors': 0, 'total': 0}
     work_queue = queue.Queue()
     worker = Thread(target=asyncio.run,
                     args=(process_queue(work_queue, poe_host, poe_port, stats_dict, mode, output_directory),),
@@ -55,8 +56,11 @@ def main():
     observer.start()
     try:
         while True:
-            logging.info(msg=stats_dict)
-            time.sleep(3)
+            copylogger.info(msg=stats_dict)
+            for k, v in stats_dict.items():
+                stats_dict[k] = 0
+            # stats_dict = {'files_sent': 0, 'files_copied': 0, 'errors': 0, 'total': 0}
+            time.sleep(10)
     except KeyboardInterrupt:
         observer.stop()
     observer.join()

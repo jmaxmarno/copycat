@@ -1,2 +1,2 @@
 watchdog==3.0.0
-git+https://git@github.com/synoptic/synoptic-logging.git@v1.0.0#egg=synoptic-logging
+git+ssh://git@github.com/synoptic/synoptic-logging.git@v1.0.2#egg=synoptic-logging
