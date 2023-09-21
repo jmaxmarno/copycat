@@ -8,8 +8,8 @@ import os
 copylogger = logging.getLogger("copycat")
 
 
-def poe_send(dat_file, host, port):
-    f = open(dat_file)
+def poe_send(src_path, host, port):
+    f = open(src_path)
     io = f.read()
     f.close()
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
