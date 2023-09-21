@@ -7,27 +7,22 @@ import os
 
 copylogger = logging.getLogger("copycat")
 
+
 def poe_send(dat_file, host, port):
-    try:
-        f = open(dat_file)
-        io = f.read()
-        f.close()
-        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        s.connect((host, port))
-        s.sendall(bytes(io, 'utf-8'))
-        s.close()
-    except Exception as e:
-        copylogger.exception(f'poe_send error:{dat_file} -- \n {e}')
+    f = open(dat_file)
+    io = f.read()
+    f.close()
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.connect((host, port))
+    s.sendall(bytes(io, 'utf-8'))
+    s.close()
+    copylogger.debug(msg=f'sent: {src_path}')
 
 
 # try to copy a file to the output directory, if it fails, log it
 def try_copy(src_path, output_dir):
-    try:
-        shutil.copyfile(src_path, os.path.join(output_dir, src_path.split('/')[-1]))
-        copylogger.info(msg=f'copied: {src_path}')
-
-    except Exception as e:
-        copylogger.error(f'copy error: {src_path} -- \n {e}')
+    shutil.copyfile(src_path, os.path.join(output_dir, src_path.split('/')[-1]))
+    copylogger.debug(msg=f'copied: {src_path}')
 
 
 async def process_queue(change_queue, host, port, stats_dict, mode='dev', output_dir=None):
@@ -35,9 +30,10 @@ async def process_queue(change_queue, host, port, stats_dict, mode='dev', output
         if not change_queue.empty():
             try:
                 slug = change_queue.get()
+                if not os.path.exists(slug.src_path):
+                    raise Exception(f'\nfile not found: {slug.src_path}\n')
                 copylogger.debug(msg=slug.src_path)
                 stats_dict['total'] += 1
-                # logging.info(msg=slug)
                 if mode == 'prod' and host is not None and port is not None:
                     poe_send(slug.src_path, host, port)
                     stats_dict['sent'] += 1

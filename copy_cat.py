@@ -22,9 +22,9 @@ def main():
         os.makedirs('./logs')
     rotating_log_handler = TimedRotatingFileHandler(
         filename=os.path.join("./logs", 'copycat.log')
-        , when='D'
-        , interval=1,
-        backupCount=3)
+        , when='H'
+        , interval=6,
+        backupCount=12)
     rotating_log_handler.namer = rotating_namer
     rotating_log_handler.setFormatter(JsonLogFormatter({"level": "levelname",
                                                "message": "message",
