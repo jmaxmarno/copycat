@@ -4,6 +4,18 @@ CopyCat
 Uses the [Watchdog](https://github.com/gorakhargosh/watchdog) library to monitor a directory and log or send files to another POE.
 Only fires when a file is created that matches the _--file_pattern/s_.
 
+### Setup/Install
+* Install Python 3.6+
+    * use a venv probably (and activate it)
+* Install synoptic-logging
+``` shell
+pip install git+ssh://git@github.com/synoptic/synoptic-logging.git@v1.0.4#egg=synoptic-logging
+```
+* Install requirements
+``` shell
+pip install -r requirements.txt
+```
+
 ## Configurable Arguments
 
 `--poe_host`, default=`10.20.2.188`, help='Host of the POE server')

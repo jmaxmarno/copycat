@@ -5,9 +5,8 @@ from watchdog.observers import Observer
 from watchdog.events import LoggingEventHandler
 import queue
 from threading import Thread
-from func import process_queue, DerWatchDog
-from synoptic_logging.logging_components import rotating_namer, JsonLogFormatter
-from logging.handlers import TimedRotatingFileHandler
+from func import DerWatchDog
+from synoptic_logging.logging_components import rotating_namer, JsonLogFormatter, CRTimedRotatingFileHandler
 import os, sys
 
 
@@ -20,7 +19,7 @@ def main():
     # make logs dir if doesn't exist
     if not os.path.exists('./logs'):
         os.makedirs('./logs')
-    rotating_log_handler = TimedRotatingFileHandler(
+    rotating_log_handler = CRTimedRotatingFileHandler(
         filename=os.path.join("./logs", 'copycat.log')
         , when='H'
         , interval=6,
@@ -45,11 +44,8 @@ def main():
     copylogger.addHandler(basic_handler)
     copylogger.info(args._get_kwargs())
     stats_dict = {'sent': 0, 'copied': 0, 'errors': 0, 'total': 0}
-    work_queue = queue.Queue()
-    worker = Thread(target=asyncio.run,
-                    args=(process_queue(work_queue, poe_host, poe_port, stats_dict, mode, output_directory),),
-                    daemon=True).start()
-    event_handler = DerWatchDog(queue=work_queue, patterns=file_patterns)
+    args.stats_dict = stats_dict
+    event_handler = DerWatchDog(patterns=file_patterns, args=args)
 
     observer = Observer()
     observer.schedule(event_handler, path)

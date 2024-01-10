@@ -25,33 +25,26 @@ def try_copy(src_path, output_dir):
     copylogger.debug(msg=f'copied: {src_path}')
 
 
-async def process_queue(change_queue, host, port, stats_dict, mode='dev', output_dir=None):
-    while True:
-        if not change_queue.empty():
-            try:
-                slug = change_queue.get()
-                if not os.path.exists(slug.src_path):
-                    raise Exception(f'\nfile not found: {slug.src_path}\n')
-                copylogger.debug(msg=slug.src_path)
-                stats_dict['total'] += 1
-                if mode == 'prod' and host is not None and port is not None:
-                    poe_send(slug.src_path, host, port)
-                    stats_dict['sent'] += 1
-                    copylogger.info(msg=f'sent: {slug.src_path}')
-                if output_dir is not None:
-                    try_copy(slug.src_path, output_dir)
-                    stats_dict['copied'] += 1
-            except Exception as e:
-                stats_dict['errors'] += 1
-                copylogger.exception(f'process_queue error: {e}')
-        else:
-            await asyncio.sleep(.05)
-
-
 class DerWatchDog(PatternMatchingEventHandler):
-    def __init__(self, queue, patterns):
+    def __init__(self, patterns, args):
+        self.args = args
+        self.mode = 'prod' if args.prod_mode is True else 'dev'
         PatternMatchingEventHandler.__init__(self, patterns=patterns)
-        self.Q = queue
 
     def on_created(self, event):
-        self.Q.put(event)
+        try:
+            slug = event
+            self.args.stats_dict['total'] += 1
+            copylogger.debug(msg=f'created: {slug.src_path}')
+            if not os.path.exists(slug.src_path):
+                raise Exception(f'\nfile not found: {slug.src_path}\n')
+            if self.mode == 'prod' and self.args.host is not None and port is not None:
+                poe_send(slug.src_path, self.args.host, self.args.port)
+                self.args.stats_dict['sent'] += 1
+                copylogger.info(msg=f'sent: {slug.src_path}')
+            if self.args.output_dir is not None:
+                try_copy(slug.src_path, self.args.output_dir)
+                self.args.stats_dict['copied'] += 1
+        except Exception as e:
+            self.args.stats_dict['errors'] += 1
+            copylogger.exception(f'process_queue error: {e}')
