@@ -38,8 +38,8 @@ class DerWatchDog(PatternMatchingEventHandler):
             copylogger.debug(msg=f'created: {slug.src_path}')
             if not os.path.exists(slug.src_path):
                 raise Exception(f'\nfile not found: {slug.src_path}\n')
-            if self.mode == 'prod' and self.args.host is not None and port is not None:
-                poe_send(slug.src_path, self.args.host, self.args.port)
+            if self.mode == 'prod' and self.args.poe_host is not None and self.args.poe_port is not None:
+                poe_send(slug.src_path, self.args.poe_host, self.args.poe_port)
                 self.args.stats_dict['sent'] += 1
                 copylogger.info(msg=f'sent: {slug.src_path}')
             if self.args.output_dir is not None:
