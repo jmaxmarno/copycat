@@ -26,12 +26,27 @@ def try_copy(src_path, output_dir):
 
 
 class DerWatchDog(PatternMatchingEventHandler):
+    '''
+    
+    '''
     def __init__(self, patterns, args):
+        '''
+        Initialize the watchdog pattern matching event handler
+        :param patterns: string patterns to trigger on
+        :param args: global args
+        '''
         self.args = args
         self.mode = 'prod' if args.prod_mode is True else 'dev'
         PatternMatchingEventHandler.__init__(self, patterns=patterns)
 
     def on_created(self, event):
+        '''
+        Overridden on_created method
+        :param event: this contains the information for the file that was created in the watched directory, most
+        importantly the src_path.
+        
+        performs the necessary operations specified by the args, one or many of [log, poe_send, copy to dir]
+        '''
         try:
             slug = event
             self.args.stats_dict['total'] += 1

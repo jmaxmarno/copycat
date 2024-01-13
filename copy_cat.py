@@ -9,14 +9,8 @@ from func import DerWatchDog
 from synoptic_logging.logging_components import rotating_namer, JsonLogFormatter, CRTimedRotatingFileHandler
 import os, sys
 
-
-
 def main():
     # run
-    # logging.basicConfig(level=logging.INFO,
-    #                     format='%(asctime)s - %(message)s',
-    #                     datefmt='%Y-%m-%d %H:%M:%S')
-    # make logs dir if doesn't exist
     if not os.path.exists('./logs'):
         os.makedirs('./logs')
     rotating_log_handler = CRTimedRotatingFileHandler(
