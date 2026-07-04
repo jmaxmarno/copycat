@@ -1,68 +1,85 @@
-import asyncio
-import time
+import glob
 import logging
-from watchdog.observers import Observer
-from watchdog.events import LoggingEventHandler
-import queue
+import os
+import sys
+import time
+from logging.handlers import RotatingFileHandler
 from threading import Thread
-from func import DerWatchDog
-from synoptic_logging.logging_components import rotating_namer, JsonLogFormatter, CRTimedRotatingFileHandler
-import os, sys
 
-def main():
-    # run
+from watchdog.observers import Observer
+
+from func import ByteBudgetQueue, DerWatchDog, Stats, sender_worker
+from synoptic_logging.logging_components import JsonLogFormatter
+
+STAT_KEYS = ('seen', 'sent', 'bytes_sent', 'copied', 'vanished', 'shed', 'send_err', 'dropped', 'errors')
+
+# size-based rotation: hard disk ceiling of maxBytes * (backupCount + 1) = 120 MB,
+# regardless of log rate (a sink outage during a burst logs per-file warnings)
+LOG_MAX_BYTES = 20_000_000
+LOG_BACKUP_COUNT = 5
+
+
+def configure_logging(debug=False):
     if not os.path.exists('./logs'):
         os.makedirs('./logs')
-    rotating_log_handler = CRTimedRotatingFileHandler(
-        filename=os.path.join("./logs", 'copycat.log')
-        , when='H'
-        , interval=6,
-        backupCount=12)
-    rotating_log_handler.namer = rotating_namer
+    level = logging.DEBUG if debug else logging.INFO
+    rotating_log_handler = RotatingFileHandler(
+        filename=os.path.join("./logs", 'copycat.log'),
+        maxBytes=LOG_MAX_BYTES,
+        backupCount=LOG_BACKUP_COUNT)
     rotating_log_handler.setFormatter(JsonLogFormatter({"level": "levelname",
                                                "message": "message",
                                                "loggerName": "name",
                                                "processName": "processName",
-                                               # "processID": "process",
-                                               # "threadName": "threadName",
-                                               # "threadID": "thread",
                                                "timestamp": "asctime"}))
 
-    copylogger = logging.getLogger(
-        "copycat")  # this can be anything unless you want to reference an existing logger
-    rotating_log_handler.setLevel(20)
-    copylogger.setLevel(10)
+    copylogger = logging.getLogger("copycat")
+    rotating_log_handler.setLevel(level)
+    copylogger.setLevel(level)
     copylogger.addHandler(rotating_log_handler)
     basic_handler = logging.StreamHandler(sys.stdout)
-    basic_handler.setLevel(10)
+    basic_handler.setLevel(level)
     copylogger.addHandler(basic_handler)
-    copylogger.info(args._get_kwargs())
-    stats_dict = {'sent': 0, 'copied': 0, 'errors': 0, 'total': 0}
-    args.stats_dict = stats_dict
-    event_handler = DerWatchDog(patterns=file_patterns, args=args)
+    return copylogger
 
+
+def main(args):
+    copylogger = configure_logging(debug=args.debug)
+    copylogger.info(args._get_kwargs())
+
+    stats = Stats(STAT_KEYS)
+    q = ByteBudgetQueue(args.queue_max, args.queue_max_bytes)
+    for _ in range(args.send_workers):
+        Thread(target=sender_worker, args=(q, args, stats), daemon=True).start()
+
+    event_handler = DerWatchDog(patterns=args.file_patterns, args=args, q=q, stats=stats)
     observer = Observer()
-    observer.schedule(event_handler, path)
+    observer.schedule(event_handler, args.watch_directory)
     observer.start()
+
+    # catch-up scan after the observer starts: a double capture is deduped
+    # downstream, a gap between scan and watch would not be
+    for pattern in args.file_patterns:
+        for path in glob.glob(os.path.join(args.watch_directory, pattern)):
+            event_handler.ingest_path(path)
+
     try:
         while True:
-            copylogger.info(msg=stats_dict)
-            for k, v in stats_dict.items():
-                stats_dict[k] = 0
-            # stats_dict = {'files_sent': 0, 'files_copied': 0, 'errors': 0, 'total': 0}
+            snap = stats.snapshot_and_reset()
+            snap['queue_depth'] = q.depth()
+            snap['queue_bytes'] = q.queued_bytes()
+            copylogger.info(msg=snap)
             time.sleep(10)
     except KeyboardInterrupt:
         observer.stop()
-    observer.join()
+        observer.join()
+        deadline = time.time() + 30
+        while not q.empty() and time.time() < deadline:
+            time.sleep(0.2)
+        if not q.empty():
+            copylogger.warning(msg=f'exiting with {q.depth()} payloads unsent')
 
 
 if __name__ == '__main__':
     from args import args
-    print(args._get_kwargs())
-    file_patterns = args.file_patterns
-    path = args.watch_directory
-    mode = 'prod' if args.prod_mode is True else 'dev'
-    output_directory = args.output_dir
-    poe_host = args.poe_host
-    poe_port = args.poe_port
-    main()
+    main(args)
